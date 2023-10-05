@@ -1,32 +1,28 @@
 from moviepy.editor import AudioFileClip
 from pydub import AudioSegment
+from typing import Optional
 import loguru
 
 
 logger = loguru.logger
 
 
-def convert_audio(file_path: str) -> str:
-    if not file_path:
-        raise FileNotFoundError(f"File {file_path} not found.")
-    logger.info(f"Checking and converting to audio: {file_path}")
-    audio_file_path = ""
+def convert_audio(file_path: str, temp_path: str) -> str:
     try:
-        while not audio_file_path.endswith(".mp3"):
-            if file_path.endswith(".wav"):
-                file = AudioFileClip(file_path)
-                audio_file_path = file_path.split(".")[0] + ".mp3"
-                file.write_audiofile(audio_file_path)
-                file.close()
-                return audio_file_path
-            if file_path.endswith(".mp4" or ".mkv"):
-                audio = AudioSegment.from_wav(file_path)
-                audio_file_path = file_path.split(".")[0] + ".mp3"
-                audio.export(audio_file_path, format="mp3")
-                audio.close()
-                return audio_file_path
-            if file_path.endswith(".mp3"):
-                return audio_file_path
+        subprocess.run([
+            "ffmpeg", 
+            "-i", 
+            f"{file_path}", 
+            "-ar", 
+            "16000", 
+            "-ac", 
+            "1", 
+            "-c:a", 
+            "pcm_s16le", 
+            f"{temp_path}"
+            ])
+        return temp_path
+
     except (FileNotFoundError, SystemError, IndexError, ValueError) as error:
         logger.exception(f"Failed to convert file: {error}")
     return "Error could not convert audio"
@@ -34,11 +30,12 @@ def convert_audio(file_path: str) -> str:
 
 def check_audio(
     audio_path: str,
+    temp_path: Optional[str]="whipser/temp/temp.wav"
 ) -> str:
     logger.info("Checking Audio Files")
-    folder_path = audio_path or "./out/"
+    
     audio_file_path = convert_audio(
-        folder_path,
+        file_path, temp_path
     )
     logger.info("Check complete")
     return audio_file_path
